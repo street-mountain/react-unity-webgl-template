@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Unity, useUnityContext } from "react-unity-webgl";
 import styles from "./app.module.css";
+import { v4 as uuidv4 } from 'uuid';
+
+// https://stackoverflow.com/questions/38123222/proper-way-to-declare-json-object-in-typescript
+type JSONValue = 
+ | string
+ | number
+ | boolean
+ | null
+ | JSONValue[]
+ | {[key: string]: JSONValue}
 
 const App = () => {
   const {
@@ -14,10 +24,10 @@ const App = () => {
     takeScreenshot,
     unload,
   } = useUnityContext({
-    loaderUrl: "/unitybuild/crateclicker.loader.js",
-    dataUrl: "/unitybuild/crateclicker.data",
-    frameworkUrl: "/unitybuild/crateclicker.framework.js",
-    codeUrl: "/unitybuild/crateclicker.wasm",
+    loaderUrl: "http://localhost:4002/Build/crategame.loader.js",
+    dataUrl: "http://localhost:4002/Build/crategame.data",
+    frameworkUrl: "http://localhost:4002/Build/crategame.framework.js",
+    codeUrl: "http://localhost:4002/Build/crategame.wasm",
     webglContextAttributes: {
       preserveDrawingBuffer: true,
     },
@@ -33,7 +43,10 @@ const App = () => {
     }
     setIsPlaying(true);
     sendMessage("GameController", "StartGame", time);
+    sendMessage("GameController", "OnNewWalletSymbols", JSON.stringify({ symbols: ["a", "b"]}))
   };
+
+  const sendCommand = (request: JSONValue) => sendMessage("GameController", "OnJSONRequest", JSON.stringify({ reqId: `req-${uuidv4()}` , request }));
 
   const handleClickFullscreen = () => {
     if (isLoaded === false) {
@@ -80,6 +93,13 @@ const App = () => {
     };
   }, [handleGameOver, addEventListener, removeEventListener]);
 
+  useEffect(() => {
+    addEventListener("RequestTokenBalanceUpdate", console.warn);
+    return () => {
+      removeEventListener("RequestTokenBalanceUpdate", console.warn);
+    };
+  }, [handleGameOver, addEventListener, removeEventListener]);
+
   return (
     <div className={styles.container}>
       <h1>Crate Clicker!</h1>
@@ -95,11 +115,14 @@ const App = () => {
         <Unity
           unityProvider={unityProvider}
           style={{ display: isLoaded ? "block" : "none" }}
-        />
+        /> 
       </div>
       <div className="buttons">
         <button onClick={() => handleClickStartGame(5)}>
           Start Short Game
+        </button>        
+        <button onClick={() => {sendCommand(["Kombis"]);}}>
+          Zombies!
         </button>
         <button onClick={() => handleClickStartGame(10)}>
           Start Long Game
